@@ -39,6 +39,7 @@ class PostForm
 
                         Select::make('post_status')
                             ->options(['publish' => 'Publish', 'draft' => 'Draft', 'scheduled' => 'Scheduled'])
+                            ->default('draft')
                             ->helperText(fn ($get) => $get('scheduled_at') ? 'Auto-set to Scheduled when future date is set' : ''),
 
                         DateTimePicker::make('scheduled_at')
@@ -49,7 +50,10 @@ class PostForm
                             ->helperText('Set a future date to auto-publish this post'),
 
                         Select::make('post_author')
-                            ->relationship('author', 'name'),
+                            ->label('Author')
+                            ->relationship('author', 'name')
+                            ->default(auth()->id())
+                            ->required(),
                     ])->columns(2),
 
                 Section::make('Custom Fields')

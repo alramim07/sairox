@@ -24,13 +24,21 @@ class CreatePost extends CreateRecord
             $data = $this->form->getState();
 
             if ($this->autoSavedPostId === null) {
-                $post = Post::create([
+                $post = new Post([
                     'post_title' => $data['post_title'],
                     'slug' => $data['slug'],
                     'post_content' => $data['post_content'] ?? '',
                     'post_status' => 'draft',
                     'post_author' => $data['post_author'] ?? auth()->id(),
                 ]);
+
+                $post->skip_revision_pending = true;
+
+                try {
+                    $post->save();
+                } finally {
+                    $post->skip_revision_pending = false;
+                }
 
                 $this->autoSavedPostId = $post->id;
             } else {

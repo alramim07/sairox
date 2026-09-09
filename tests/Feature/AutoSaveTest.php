@@ -303,4 +303,50 @@ class AutoSaveTest extends TestCase
 
         $this->assertSame(0, Post::count());
     }
+
+    public function test_create_autosave_draft_does_not_accumulate_revisions(): void
+    {
+        $author = User::factory()->create();
+
+        Livewire::actingAs($author)
+            ->test(CreatePost::class)
+            ->fillForm([
+                'post_title' => 'Draft title',
+                'slug' => 'draft-title',
+                'post_content' => 'First content',
+            ])
+            ->call('autoSave');
+
+        $draft = Post::where('slug', 'draft-title')->firstOrFail();
+
+        $this->assertSame(0, $draft->revisions()->count());
+    }
+
+    public function test_create_uses_author_and_status_defaults(): void
+    {
+        $author = User::factory()->create();
+
+        $component = Livewire::actingAs($author)
+            ->test(CreatePost::class)
+            ->fillForm([
+                'post_title' => 'Final title',
+                'slug' => 'final-slug',
+                'post_content' => 'Final content',
+            ]);
+
+        $component->call('autoSave');
+
+        $draft = Post::where('slug', 'final-slug')->firstOrFail();
+
+        $this->assertSame($author->getKey(), $draft->post_author);
+        $this->assertSame('draft', $draft->post_status);
+
+        $component->call('create');
+
+        $post = Post::where('slug', 'final-slug')->firstOrFail();
+
+        $this->assertSame($author->getKey(), $post->post_author);
+        $this->assertSame('draft', $post->post_status);
+        $this->assertSame(1, Post::where('slug', 'final-slug')->count());
+    }
 }

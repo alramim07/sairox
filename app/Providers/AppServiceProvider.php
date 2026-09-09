@@ -33,7 +33,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         FilamentView::registerRenderHook(
-            PanelsRenderHook::PAGE_END,
+            PanelsRenderHook::LAYOUT_END,
             fn (): HtmlString => in_array(request()->route()?->getName(), [
                 'filament.admin.resources.posts.edit',
                 'filament.admin.resources.posts.create',

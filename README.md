@@ -75,6 +75,7 @@ Sairox is a modern, lightweight CMS built with Laravel and Filament as a WordPre
 |---------|--------|
 | Content Revisions (auto-snapshots, diff viewer, restore, 50 cap) | ✅ |
 | Scheduled Publishing (scheduled_at field, status management, scheduler) | ✅ |
+| Draft Management (permanent signed preview URLs, 5s auto-save on create/edit) | ✅ |
 
 ## Project Structure
 
