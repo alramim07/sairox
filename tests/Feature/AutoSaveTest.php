@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\Posts\Pages\CreatePost;
 use App\Filament\Resources\Posts\Pages\EditPost;
 use App\Models\Post;
 use App\Models\User;
@@ -221,5 +222,78 @@ class AutoSaveTest extends TestCase
             ->get('/admin')
             ->assertOk()
             ->assertDontSee('auto-save-indicator', false);
+    }
+
+    public function test_auto_save_on_create_creates_draft_and_updates_it(): void
+    {
+        $author = User::factory()->create();
+
+        $component = Livewire::actingAs($author)
+            ->test(CreatePost::class)
+            ->fillForm([
+                'post_title' => 'Draft title',
+                'slug' => 'draft-title',
+                'post_content' => 'First content',
+            ])
+            ->call('autoSave');
+
+        $draft = Post::where('slug', 'draft-title')->firstOrFail();
+
+        $this->assertSame('draft', $draft->post_status);
+        $this->assertSame('<p>First content</p>', $draft->post_content);
+
+        $component
+            ->assertSet('autoSavedPostId', $draft->id)
+            ->fillForm([
+                'post_title' => 'Draft title (updated)',
+                'slug' => 'draft-title',
+                'post_content' => 'Updated content',
+            ])
+            ->call('autoSave');
+
+        $draft->refresh();
+
+        $this->assertSame(1, Post::where('slug', 'draft-title')->count());
+        $this->assertSame('Draft title (updated)', $draft->post_title);
+        $this->assertSame('<p>Updated content</p>', $draft->post_content);
+        $this->assertSame('draft', $draft->post_status);
+    }
+
+    public function test_create_reuses_auto_saved_draft_not_duplicates(): void
+    {
+        $author = User::factory()->create();
+
+        Livewire::actingAs($author)
+            ->test(CreatePost::class)
+            ->fillForm([
+                'post_title' => 'Final title',
+                'slug' => 'final-slug',
+                'post_content' => 'Final content',
+                'post_status' => 'publish',
+            ])
+            ->call('autoSave')
+            ->call('create');
+
+        $post = Post::where('slug', 'final-slug')->first();
+
+        $this->assertNotNull($post);
+        $this->assertSame(1, Post::where('slug', 'final-slug')->count());
+        $this->assertSame('Final title', $post->post_title);
+        $this->assertSame('publish', $post->post_status);
+        $this->assertSame('<p>Final content</p>', $post->post_content);
+    }
+
+    public function test_auto_save_on_create_skips_if_title_empty(): void
+    {
+        $author = User::factory()->create();
+
+        Livewire::actingAs($author)
+            ->test(CreatePost::class)
+            ->fillForm(['post_title' => ''])
+            ->call('autoSave')
+            ->assertSet('autoSavedPostId', null)
+            ->assertSet('lastAutoSaved', null);
+
+        $this->assertSame(0, Post::count());
     }
 }
