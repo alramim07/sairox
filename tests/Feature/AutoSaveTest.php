@@ -23,6 +23,8 @@ class AutoSaveTest extends TestCase
 
     protected function tearDown(): void
     {
+        // The panel HTTP tests below flip app.env to 'local'; always restore it
+        // so the change can't leak into other test classes.
         config(['app.env' => 'testing']);
 
         parent::tearDown();
@@ -103,8 +105,94 @@ class AutoSaveTest extends TestCase
         $this->assertSame('Original content', $post->post_content);
     }
 
+    public function test_autosave_preserves_an_existing_excerpt(): void
+    {
+        $author = User::factory()->create();
+
+        $post = Post::create([
+            'post_author' => $author->getKey(),
+            'post_title' => 'Draft title',
+            'post_content' => 'Old content',
+            'post_excerpt' => 'My custom excerpt',
+            'slug' => 'draft-title',
+            'post_status' => 'draft',
+        ]);
+
+        Livewire::actingAs($author)
+            ->test(EditPost::class, ['record' => $post->getKey()])
+            ->fillForm([
+                'post_title' => 'Draft title (updated)',
+                'post_content' => 'Old content',
+                'slug' => 'draft-title',
+            ])
+            ->call('autoSave');
+
+        $post->refresh();
+
+        $this->assertSame('My custom excerpt', $post->post_excerpt);
+        $this->assertSame('Draft title (updated)', $post->post_title);
+    }
+
+    public function test_autosave_preserves_an_existing_thumbnail_as_a_string(): void
+    {
+        $author = User::factory()->create();
+
+        $post = Post::create([
+            'post_author' => $author->getKey(),
+            'post_title' => 'Draft title',
+            'post_content' => 'Old content',
+            'slug' => 'draft-title',
+            'post_status' => 'draft',
+            'thumbnail' => 'thumbnails/cat.jpg',
+        ]);
+
+        Livewire::actingAs($author)
+            ->test(EditPost::class, ['record' => $post->getKey()])
+            ->fillForm([
+                'post_title' => 'Draft title (updated)',
+                'post_content' => 'Old content',
+                'slug' => 'draft-title',
+            ])
+            ->call('autoSave')
+            ->assertSet('lastAutoSaved', fn (?string $value): bool => is_string($value) && preg_match('/^\d{2}:\d{2}:\d{2}$/', $value) === 1);
+
+        $post->refresh();
+
+        $this->assertSame('thumbnails/cat.jpg', $post->thumbnail);
+    }
+
+    public function test_autosave_does_not_create_revisions(): void
+    {
+        $author = User::factory()->create();
+
+        $post = Post::create([
+            'post_author' => $author->getKey(),
+            'post_title' => 'Draft title',
+            'post_content' => 'Old content',
+            'slug' => 'draft-title',
+            'post_status' => 'draft',
+        ]);
+
+        $this->assertSame(1, $post->revisions()->count());
+
+        Livewire::actingAs($author)
+            ->test(EditPost::class, ['record' => $post->getKey()])
+            ->fillForm([
+                'post_title' => 'Draft title (updated)',
+                'slug' => 'draft-title',
+            ])
+            ->call('autoSave');
+
+        $post->refresh();
+
+        $this->assertSame(1, $post->revisions()->count());
+    }
+
     public function test_autosave_indicator_renders_on_the_post_edit_page(): void
     {
+        // The User model does not implement FilamentUser, so the panel's auth
+        // middleware (Authenticate.php) only lets requests through when
+        // app.env === 'local'. Tests run under 'testing', hence the toggle.
         config(['app.env' => 'local']);
 
         $author = User::factory()->create();
@@ -126,6 +214,7 @@ class AutoSaveTest extends TestCase
 
     public function test_autosave_indicator_does_not_render_on_unrelated_pages(): void
     {
+        // Same app.env === 'local' requirement as the sibling HTTP test above.
         config(['app.env' => 'local']);
 
         $this->actingAs(User::factory()->create())

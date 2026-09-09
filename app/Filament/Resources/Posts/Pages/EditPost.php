@@ -45,13 +45,24 @@ class EditPost extends EditRecord
 
             $state = $this->form->getState();
 
-            $this->record->update([
-                'post_title' => $state['post_title'] ?? null,
-                'slug' => $state['slug'] ?? null,
-                'post_content' => $state['post_content'] ?? null,
-                'post_excerpt' => $state['post_excerpt'] ?? null,
-                'thumbnail' => $state['thumbnail'] ?? null,
-            ]);
+            $thumbnail = $state['thumbnail'] ?? $this->record->thumbnail;
+
+            if (is_array($thumbnail)) {
+                $thumbnail = $thumbnail[0] ?? null;
+            }
+
+            $this->record->skip_revision_pending = true;
+
+            try {
+                $this->record->update([
+                    'post_title' => $state['post_title'] ?? null,
+                    'slug' => $state['slug'] ?? null,
+                    'post_content' => $state['post_content'] ?? null,
+                    'thumbnail' => $thumbnail,
+                ]);
+            } finally {
+                $this->record->skip_revision_pending = false;
+            }
 
             $this->lastAutoSaved = now()->format('H:i:s');
 
@@ -62,9 +73,11 @@ class EditPost extends EditRecord
                 ->send();
 
             $this->dispatch('auto-saved', time: $this->lastAutoSaved);
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
             // Auto-save must never clobber valid data with an incomplete draft,
-            // so all failures (e.g. missing required fields) are swallowed.
+            // so all failures (e.g. missing required fields) are silently
+            // ignored in the UI, but still reported to the error log.
+            report($e);
         }
     }
 }
