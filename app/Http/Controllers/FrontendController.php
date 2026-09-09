@@ -44,6 +44,16 @@ class FrontendController extends Controller
         return view($this->resolveView('single'), compact('post'));
     }
 
+    public function preview(string $slug)
+    {
+        $post = Post::with('author', 'categories', 'tags')
+            ->where('post_type', 'post')
+            ->where('slug', $slug)
+            ->firstOrFail();
+
+        return view($this->resolveView('single'), compact('post'));
+    }
+
     public function page(string $slug)
     {
         $page = Page::with('author')
