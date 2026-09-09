@@ -270,6 +270,7 @@ class AutoSaveTest extends TestCase
                 'slug' => 'final-slug',
                 'post_content' => 'Final content',
                 'post_status' => 'publish',
+                'post_author' => $author->getKey(),
             ])
             ->call('autoSave')
             ->call('create');
@@ -281,6 +282,12 @@ class AutoSaveTest extends TestCase
         $this->assertSame('Final title', $post->post_title);
         $this->assertSame('publish', $post->post_status);
         $this->assertSame('<p>Final content</p>', $post->post_content);
+
+        $revision = $post->revisions()->orderBy('id', 'desc')->first();
+
+        $this->assertNotNull($revision);
+        $this->assertSame('Final title', $revision->data['post_title']);
+        $this->assertSame('publish', $revision->data['post_status']);
     }
 
     public function test_auto_save_on_create_skips_if_title_empty(): void
