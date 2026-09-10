@@ -14,12 +14,17 @@ class Post extends Model
 {
     use HasRevisions, SoftDeletes;
 
+    protected $attributes = [
+        'post_format' => 'standard',
+    ];
+
     protected $fillable = [
         'post_author',
         'post_content',
         'post_title',
         'post_excerpt',
         'post_status',
+        'post_format',
         'comment_status',
         'slug',
         'post_type',
@@ -35,6 +40,19 @@ class Post extends Model
             'scheduled_at' => 'datetime',
         ];
     }
+
+    public const FORMATS = [
+        'standard' => 'Standard',
+        'aside' => 'Aside',
+        'gallery' => 'Gallery',
+        'link' => 'Link',
+        'image' => 'Image',
+        'quote' => 'Quote',
+        'status' => 'Status',
+        'video' => 'Video',
+        'audio' => 'Audio',
+        'chat' => 'Chat',
+    ];
 
     protected static function booted(): void
     {
