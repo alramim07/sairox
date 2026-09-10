@@ -38,7 +38,7 @@ trait HasRevisions
             ]);
 
             while ($model->revisions()->count() > 50) {
-                $model->revisions()->orderBy('created_at')->limit(1)->delete();
+                $model->revisions()->orderBy('id')->limit(1)->delete();
             }
         });
     }
@@ -69,7 +69,7 @@ trait HasRevisions
         $toData = $to->data;
 
         $diffs = [];
-        $fields = ['post_title', 'post_content', 'post_excerpt', 'post_status'];
+        $fields = ['post_title', 'post_content', 'post_excerpt', 'post_status', 'post_format'];
 
         foreach ($fields as $field) {
             $old = $fromData[$field] ?? '';

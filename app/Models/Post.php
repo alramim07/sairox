@@ -110,7 +110,7 @@ class Post extends Model
 
     public function chatLines(): array
     {
-        preg_match_all('/<p[^>]*>(.*?)<\/p>/s', $this->post_content, $matches);
+        preg_match_all('/<p[^>]*>(.*?)<\/p>/is', $this->post_content, $matches);
 
         return $matches[1] ?? [];
     }

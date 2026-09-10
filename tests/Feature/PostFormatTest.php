@@ -360,4 +360,85 @@ class PostFormatTest extends TestCase
             ->assertSee('format-standard', false)
             ->assertDontSee('>Standard</span>', false);
     }
+
+    public function test_theme_and_core_format_parts_are_byte_identical(): void
+    {
+        $names = ['aside', 'gallery', 'link', 'image', 'quote', 'status', 'video', 'audio', 'chat', 'post-card'];
+        $themeDir = base_path('themes/sairox-default/views/partials');
+        $coreDir = resource_path('views/front/partials');
+
+        foreach ($names as $name) {
+            $file = $name === 'post-card' ? 'post-card' : "content-{$name}";
+
+            $this->assertFileEquals(
+                "{$themeDir}/{$file}.blade.php",
+                "{$coreDir}/{$file}.blade.php",
+                "Theme and core {$file}.blade.php must stay byte-identical"
+            );
+        }
+    }
+
+    public function test_resolver_falls_back_to_core_part_when_no_active_theme(): void
+    {
+        set_option('active_theme', 'ghost-theme');
+
+        $manager = new ThemeManager;
+
+        $this->assertSame('sairox-core::partials.content-standard', $manager->getPostContentView('standard'));
+        $this->assertSame('sairox-core::partials.content-standard', $manager->getPostContentView('quote'));
+    }
+
+    public function test_revision_diff_includes_post_format(): void
+    {
+        $post = Post::create([
+            'post_title' => 'Revisioned',
+            'post_content' => '<p>First body</p>',
+            'slug' => 'revision-format',
+            'post_status' => 'publish',
+            'post_format' => 'standard',
+        ]);
+
+        $first = $post->revisions()->latest('id')->first();
+
+        $post->update(['post_format' => 'quote']);
+
+        $second = $post->revisions()->latest('id')->first();
+
+        $diffs = $post->diffRevision($first, $second);
+
+        $this->assertArrayHasKey('post_format', $diffs);
+        $this->assertSame('standard', $diffs['post_format']['old']);
+        $this->assertSame('quote', $diffs['post_format']['new']);
+    }
+
+    public function test_link_href_with_unsafe_scheme_falls_back_to_hash(): void
+    {
+        Post::create([
+            'post_title' => 'Unsafe Link',
+            'post_content' => '<p>javascript:alert(1)</p>',
+            'slug' => 'unsafe-link',
+            'post_status' => 'publish',
+            'post_format' => 'link',
+        ]);
+
+        $this->get('/posts/unsafe-link')
+            ->assertOk()
+            ->assertSee('href="#"', false)
+            ->assertDontSee('href="javascript:', false);
+    }
+
+    public function test_archive_card_uses_ucfirst_label_for_unknown_format(): void
+    {
+        Post::create([
+            'post_title' => 'Legacy',
+            'post_content' => '<p>Legacy body</p>',
+            'slug' => 'legacy-format',
+            'post_status' => 'publish',
+            'post_format' => 'vlog',
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('>Vlog</span>', false);
+    }
 }

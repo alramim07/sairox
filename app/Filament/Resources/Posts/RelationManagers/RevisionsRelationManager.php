@@ -63,6 +63,7 @@ class RevisionsRelationManager extends RelationManager
                                 'post_content' => 'Content',
                                 'post_excerpt' => 'Excerpt',
                                 'post_status' => 'Status',
+                                'post_format' => 'Format',
                                 default => $field,
                             };
                             $html .= '<div class="border rounded-lg p-4">';
