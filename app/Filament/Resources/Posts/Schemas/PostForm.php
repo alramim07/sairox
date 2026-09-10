@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Posts\Schemas;
 
+use App\Models\Post;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
@@ -41,6 +42,12 @@ class PostForm
                             ->options(['publish' => 'Publish', 'draft' => 'Draft', 'scheduled' => 'Scheduled'])
                             ->default('draft')
                             ->helperText(fn ($get) => $get('scheduled_at') ? 'Auto-set to Scheduled when future date is set' : ''),
+
+                        Select::make('post_format')
+                            ->label('Post Format')
+                            ->options(Post::FORMATS)
+                            ->default('standard')
+                            ->helperText('Controls how the theme renders this post'),
 
                         DateTimePicker::make('scheduled_at')
                             ->label('Schedule Publication')

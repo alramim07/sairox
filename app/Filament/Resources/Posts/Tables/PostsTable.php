@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Posts\Tables;
 
+use App\Models\Post;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -51,6 +52,11 @@ class PostsTable
                     ->label('Type')
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                TextColumn::make('post_format')
+                    ->label('Format')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => Post::FORMATS[$state] ?? ucfirst($state)),
+
                 // 5. Show the Date
                 TextColumn::make('created_at')
                     ->label('Published At')
@@ -66,6 +72,9 @@ class PostsTable
                         'draft' => 'Draft',
                         'private' => 'Private',
                     ]),
+                SelectFilter::make('post_format')
+                    ->label('Format')
+                    ->options(Post::FORMATS),
                 TrashedFilter::make(),
             ])
             ->recordActions([
