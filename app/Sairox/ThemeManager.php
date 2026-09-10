@@ -46,6 +46,21 @@ class ThemeManager
         return "sairox-core::{$view}";
     }
 
+    public function getPostContentView(string $format, ?string $themePath = null): string
+    {
+        $themePath ??= $this->getActiveTheme()['path'] ?? base_path('themes/sairox-default');
+
+        if ($format !== '' && $format !== 'standard' && File::exists("{$themePath}/views/partials/content-{$format}.blade.php")) {
+            return "theme::partials.content-{$format}";
+        }
+
+        if (File::exists("{$themePath}/views/partials/content-standard.blade.php")) {
+            return 'theme::partials.content-standard';
+        }
+
+        return 'sairox-core::partials.content-standard';
+    }
+
     public function getInstalledThemes(): array
     {
         $themes = [];

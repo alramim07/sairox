@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Filament\Resources\Posts\Pages\CreatePost;
 use App\Models\Post;
 use App\Models\User;
+use App\Sairox\ThemeManager;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -157,5 +158,29 @@ class PostFormatTest extends TestCase
             ->assertOk()
             ->assertSee('post_format', false)
             ->assertSee('Format', false);
+    }
+
+    public function test_theme_manager_resolves_standard_and_falls_back(): void
+    {
+        $manager = app(ThemeManager::class);
+
+        $this->assertSame('theme::partials.content-standard', $manager->getPostContentView('standard'));
+        $this->assertSame('theme::partials.content-standard', $manager->getPostContentView('unknown-format'));
+        $this->assertSame('sairox-core::partials.content-standard', $manager->getPostContentView('quote', base_path('themes/does-not-exist')));
+    }
+
+    public function test_single_page_renders_standard_part_with_format_class(): void
+    {
+        Post::create([
+            'post_title' => 'Standard Post',
+            'post_content' => '<p>Hello format</p>',
+            'slug' => 'standard-post',
+            'post_status' => 'publish',
+        ]);
+
+        $this->get('/posts/standard-post')
+            ->assertOk()
+            ->assertSee('Hello format', false)
+            ->assertSee('format-standard', false);
     }
 }
