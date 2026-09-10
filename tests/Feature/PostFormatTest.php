@@ -201,30 +201,38 @@ class PostFormatTest extends TestCase
     public function test_each_format_renders_its_part_on_the_single_page(): void
     {
         $cases = [
-            'aside' => ['class' => 'format-aside', 'needle' => 'Aside body'],
-            'gallery' => ['class' => 'format-gallery', 'needle' => 'Gallery body'],
-            'link' => ['class' => 'format-link', 'needle' => 'https://example.com'],
+            'aside' => ['class' => 'format-aside', 'needle' => 'Aside body', 'marker' => 'italic'],
+            'gallery' => ['class' => 'format-gallery', 'needle' => 'Gallery body', 'marker' => 'grid grid-cols-2', 'content' => '<p>Gallery body</p><img src="/grid/a.jpg">'],
+            'link' => ['class' => 'format-link', 'needle' => 'https://example.com', 'marker' => 'href="https://example.com"'],
             'image' => ['class' => 'format-image', 'needle' => 'Image body'],
-            'quote' => ['class' => 'format-quote', 'needle' => 'To be or not to be'],
-            'status' => ['class' => 'format-status', 'needle' => 'Status body'],
+            'quote' => ['class' => 'format-quote', 'needle' => 'To be or not to be', 'marker' => '<blockquote'],
+            'status' => ['class' => 'format-status', 'needle' => 'Status body', 'dontSee' => '<h1'],
             'video' => ['class' => 'format-video', 'needle' => 'Video body'],
             'audio' => ['class' => 'format-audio', 'needle' => 'Audio body'],
-            'chat' => ['class' => 'format-chat', 'needle' => 'First line'],
+            'chat' => ['class' => 'format-chat', 'needle' => 'First line', 'marker' => 'bg-amber-50', 'content' => '<p>First line</p><p>Second line</p>'],
         ];
 
         foreach ($cases as $format => $expect) {
             Post::create([
                 'post_title' => 'Formatted',
-                'post_content' => "<p>{$expect['needle']}</p>",
+                'post_content' => $expect['content'] ?? "<p>{$expect['needle']}</p>",
                 'slug' => "fmt-{$format}",
                 'post_status' => 'publish',
                 'post_format' => $format,
             ]);
 
-            $this->get("/posts/fmt-{$format}")
+            $response = $this->get("/posts/fmt-{$format}")
                 ->assertOk()
                 ->assertSee($expect['class'], false)
                 ->assertSee($expect['needle'], false);
+
+            if (isset($expect['marker'])) {
+                $response->assertSee($expect['marker'], false);
+            }
+
+            if (isset($expect['dontSee'])) {
+                $response->assertDontSee($expect['dontSee'], false);
+            }
         }
     }
 
@@ -256,6 +264,7 @@ class PostFormatTest extends TestCase
         $this->get('/posts/chat-part')
             ->assertOk()
             ->assertSee('format-chat', false)
+            ->assertSee('bg-amber-50', false)
             ->assertSee('Hello there', false)
             ->assertSee('Hi back', false);
     }
@@ -274,6 +283,7 @@ class PostFormatTest extends TestCase
             ->assertOk()
             ->assertSee('/img/a.jpg', false)
             ->assertSee('/img/b.jpg', false)
+            ->assertSee('grid grid-cols-2', false)
             ->assertSee('format-gallery', false);
     }
 
