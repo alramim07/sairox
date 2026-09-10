@@ -334,4 +334,30 @@ class PostFormatTest extends TestCase
 
         $this->assertSame(['/a.jpg', '/b.jpg'], $post->galleryImages());
     }
+
+    public function test_homepage_post_card_shows_format_class_and_badge(): void
+    {
+        Post::create([
+            'post_title' => 'Quote Card',
+            'post_content' => '<p>Card body</p>',
+            'slug' => 'quote-card',
+            'post_status' => 'publish',
+            'post_format' => 'quote',
+        ]);
+
+        Post::create([
+            'post_title' => 'Plain Card',
+            'post_content' => '<p>Plain body</p>',
+            'slug' => 'plain-card',
+            'post_status' => 'publish',
+            'post_format' => 'standard',
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('format-quote', false)
+            ->assertSee('>Quote</span>', false)
+            ->assertSee('format-standard', false)
+            ->assertDontSee('>Standard</span>', false);
+    }
 }
