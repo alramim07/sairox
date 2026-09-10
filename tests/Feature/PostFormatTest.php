@@ -9,6 +9,7 @@ use App\Sairox\ThemeManager;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -182,5 +183,145 @@ class PostFormatTest extends TestCase
             ->assertOk()
             ->assertSee('Hello format', false)
             ->assertSee('format-standard', false);
+    }
+
+    public function test_theme_manager_resolves_each_format_part(): void
+    {
+        $manager = app(ThemeManager::class);
+
+        foreach (array_keys(Post::FORMATS) as $format) {
+            if ($format === 'standard') {
+                continue;
+            }
+
+            $this->assertSame("theme::partials.content-{$format}", $manager->getPostContentView($format));
+        }
+    }
+
+    public function test_each_format_renders_its_part_on_the_single_page(): void
+    {
+        $cases = [
+            'aside' => ['class' => 'format-aside', 'needle' => 'Aside body'],
+            'gallery' => ['class' => 'format-gallery', 'needle' => 'Gallery body'],
+            'link' => ['class' => 'format-link', 'needle' => 'https://example.com'],
+            'image' => ['class' => 'format-image', 'needle' => 'Image body'],
+            'quote' => ['class' => 'format-quote', 'needle' => 'To be or not to be'],
+            'status' => ['class' => 'format-status', 'needle' => 'Status body'],
+            'video' => ['class' => 'format-video', 'needle' => 'Video body'],
+            'audio' => ['class' => 'format-audio', 'needle' => 'Audio body'],
+            'chat' => ['class' => 'format-chat', 'needle' => 'First line'],
+        ];
+
+        foreach ($cases as $format => $expect) {
+            Post::create([
+                'post_title' => 'Formatted',
+                'post_content' => "<p>{$expect['needle']}</p>",
+                'slug' => "fmt-{$format}",
+                'post_status' => 'publish',
+                'post_format' => $format,
+            ]);
+
+            $this->get("/posts/fmt-{$format}")
+                ->assertOk()
+                ->assertSee($expect['class'], false)
+                ->assertSee($expect['needle'], false);
+        }
+    }
+
+    public function test_quote_part_renders_a_blockquote(): void
+    {
+        Post::create([
+            'post_title' => 'Quote',
+            'post_content' => '<p>A quotable line.</p>',
+            'slug' => 'quote-part',
+            'post_status' => 'publish',
+            'post_format' => 'quote',
+        ]);
+
+        $this->get('/posts/quote-part')
+            ->assertOk()
+            ->assertSee('<blockquote', false);
+    }
+
+    public function test_chat_part_renders_chat_bubbles(): void
+    {
+        Post::create([
+            'post_title' => 'Chat',
+            'post_content' => '<p>Hello there</p><p>Hi back</p>',
+            'slug' => 'chat-part',
+            'post_status' => 'publish',
+            'post_format' => 'chat',
+        ]);
+
+        $this->get('/posts/chat-part')
+            ->assertOk()
+            ->assertSee('format-chat', false)
+            ->assertSee('Hello there', false)
+            ->assertSee('Hi back', false);
+    }
+
+    public function test_gallery_part_renders_an_image_grid(): void
+    {
+        Post::create([
+            'post_title' => 'Gallery',
+            'post_content' => '<p><img src="/img/a.jpg"><img src="/img/b.jpg"></p>',
+            'slug' => 'gallery-part',
+            'post_status' => 'publish',
+            'post_format' => 'gallery',
+        ]);
+
+        $this->get('/posts/gallery-part')
+            ->assertOk()
+            ->assertSee('/img/a.jpg', false)
+            ->assertSee('/img/b.jpg', false)
+            ->assertSee('format-gallery', false);
+    }
+
+    public function test_preview_of_a_formatted_draft_uses_its_part(): void
+    {
+        Filament::setCurrentPanel('admin');
+        config(['app.env' => 'local']);
+
+        $author = User::factory()->create();
+
+        $post = Post::create([
+            'post_author' => $author->getKey(),
+            'post_title' => 'Draft Quote',
+            'post_content' => '<p>Preview me</p>',
+            'slug' => 'draft-quote',
+            'post_status' => 'draft',
+            'post_format' => 'quote',
+        ]);
+
+        $url = URL::signedRoute('preview.post', ['slug' => $post->slug]);
+
+        $this->get($url)
+            ->assertOk()
+            ->assertSee('format-quote', false)
+            ->assertSee('Preview me', false);
+    }
+
+    public function test_chat_lines_helper_splits_paragraphs(): void
+    {
+        $post = Post::create([
+            'post_title' => 'Chat',
+            'post_content' => '<p>First</p><p class="x">Second</p>',
+            'slug' => 'chat-helper',
+            'post_status' => 'draft',
+        ]);
+
+        $this->assertSame(['First', 'Second'], $post->chatLines());
+    }
+
+    public function test_gallery_images_helper_extracts_src_attributes(): void
+    {
+        $post = Post::create([
+            'post_title' => 'Gallery',
+            'post_content' => '<p><img src="/a.jpg" alt=""><img src="/b.jpg"></p>',
+            'slug' => 'gallery-helper',
+            'post_status' => 'draft',
+        ]);
+
+        $this->assertSame(['/a.jpg', '/b.jpg'], $post->galleryImages());
     }
 }

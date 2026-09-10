@@ -107,4 +107,18 @@ class Post extends Model
 
         return $metaCache[$this->id][$key] ?? $default;
     }
+
+    public function chatLines(): array
+    {
+        preg_match_all('/<p[^>]*>(.*?)<\/p>/s', $this->post_content, $matches);
+
+        return $matches[1] ?? [];
+    }
+
+    public function galleryImages(): array
+    {
+        preg_match_all('/<img[^>]*src=["\']([^"\']+)["\']/i', $this->post_content, $matches);
+
+        return $matches[1] ?? [];
+    }
 }
